@@ -1,0 +1,44 @@
+from __future__ import division
+from collections import defaultdict as ddict
+import itertools
+import math
+import random
+class NGrams(object):
+def __init__(self, max_n, words=None):
+self._max_n = max_n
+self._n_range = range(1, max_n + 1)
+self._counts = ddict(lambda: 0)
+# if words were supplied, update the counts
+if words is not None:
+self.update(words)
+def update(self, words):
+# increment the total word count, storing this under
+# the empty tuple - storing it this way simplifies
+# the _probability() method
+self._counts[()] += len(words)
+# count ngrams of all the given lengths
+for i, word in enumerate(words):
+for n in self._n_range:
+if i + n <= len(words):
+ngram_range = xrange(i, i + n)
+ngram = [words[j] for j in ngram_range]
+self._counts[tuple(ngram)] += 1
+def probability(self, words):
+if len(words) <= self._max_n:
+return self._probability(words)
+else:
+prob = 1
+for i in xrange(len(words) - self._max_n + 1):
+ngram = words[i:i + self._max_n]
+prob *= self._probability(ngram)
+return prob
+def _probability(self, ngram):
+# get count of ngram and its prefix
+ngram = tuple(ngram)
+ngram_count = self._counts[ngram]
+prefix_count = self._counts[ngram[:-1]]
+# divide counts (or return 0.0 if not seen)
+if ngram_count and prefix_count:
+return ngram_count / prefix_count
+else:
+return 0.0

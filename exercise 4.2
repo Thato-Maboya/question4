@@ -1,0 +1,58 @@
+class GoodTuringNGrams(NGrams):
+def __init__(self, max_n, words=None):
+self._default_probs = {}
+self._smoothed_counts = ddict(lambda: 0)
+super(GoodTuringNGrams, self).__init__(max_n, words)
+def update(self, words):
+super(GoodTuringNGrams, self).update(words)
+# calculate number of ngrams with each count
+vocab_counts = ddict(lambda: 0)
+count_counts = ddict(lambda: ddict(lambda: 0))
+for ngram in self._counts:
+vocab_counts[len(ngram)] += 1
+count_counts[len(ngram)][self._counts[ngram]] += 1
+# determine counts for zeros
+defaults = self._default_probs
+defaults[0] = 0.0
+for n in self._n_range:
+# missing probability mass is the number of ngrams
+# seen once divided by the number of ngrams seen
+seen_count = vocab_counts[n]
+missing_mass = count_counts[n][1] / seen_count
+# for unigrams, there is no way to guess the number
+# of unseen items, so the extra probability mass is
+# arbitrarily distributed across as many new items
+# as there were old items
+if n == 1:
+defaults[n] = missing_mass / seen_count
+# for other ngrams, the extra probability mass
+# is distributed across the remainder of the
+# V ** N ngrams possible given V unigrams
+else:
+possible_ngrams = vocab_counts[1] ** n
+unseen_count = possible_ngrams - seen_count
+defaults[n] = missing_mass / unseen_count
+# apply the count smoothing for all existing ngrams
+self._smoothed_counts[()] = self._counts[()]
+for ngram in self._counts:
+if len(ngram) == 0:
+continue
+count = self._counts[ngram]
+one_more = count_counts[len(ngram)][count + 1]
+same = count_counts[len(ngram)][count]
+smoothed_count = (count + 1) * one_more / same
+self._smoothed_counts[ngram] = smoothed_count
+def _probability(self, ngram):
+# if ngram was never seen, return default probability
+ngram = tuple(ngram)
+ngram_count = self._counts[ngram]
+if ngram_count == 0:
+return self._default_probs[len(ngram)]
+# divide smoothed counts (or return 0.0 if not seen)
+else:
+ngram_count = self._smoothed_counts[ngram]
+prefix_count = self._smoothed_counts[ngram[:-1]]
+if ngram_count and prefix_count:
+return ngram_count / prefix_count
+else:
+return 0.0
